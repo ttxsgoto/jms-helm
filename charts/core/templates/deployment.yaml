@@ -1,0 +1,125 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "core.fullname" . }}
+  labels:
+    {{- include "core.labels" . | nindent 4 }}
+spec:
+{{- if not .Values.autoscaling.enabled }}
+  replicas: {{ .Values.replicaCount }}
+{{- end }}
+  selector:
+    matchLabels:
+      {{- include "core.selectorLabels" . | nindent 6 }}
+  strategy:
+    rollingUpdate:    # 滚动更新
+      maxSurge: {{ .Values.rollingUpdate.maxSurge }}  # 指定可以超过期望的pod数量的最大百分比，也可以是个数
+      maxUnavailable: {{ .Values.rollingUpdate.maxUnavailable }}    # 指定升级过程中不可用Pod的最大数量
+    type: {{ .Values.rollingUpdate.type }}
+  template:
+    metadata:
+    {{- with .Values.podAnnotations }}
+      annotations:
+        {{- toYaml . | nindent 8 }}
+    {{- end }}
+      labels:
+        {{- include "core.selectorLabels" . | nindent 8 }}
+    spec:
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      securityContext:
+        {{- toYaml .Values.podSecurityContext | nindent 8 }}
+      containers:
+        - name: {{ .Chart.Name }}
+          securityContext:
+            {{- toYaml .Values.securityContext | nindent 12 }}
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          ports:
+            - name: core
+              containerPort: 8080
+              protocol: TCP
+            - name: core8070
+              containerPort: 8070
+              protocol: TCP
+          volumeMounts:
+            - name: static
+              mountPath: /opt/jumpserver/data/static
+            - name: media
+              mountPath: /opt/jumpserver/data/media
+          env:
+            - name: REDIS_PORT
+              valueFrom:
+                configMapKeyRef:
+                  name: {{.Release.Name}}-cfg
+                  key: redis_port
+            - name: REDIS_HOST
+              valueFrom:
+                configMapKeyRef:
+                  name: {{.Release.Name}}-cfg
+                  key: redis_host
+            - name: REDIS_PASSWORD
+              valueFrom:
+                configMapKeyRef:
+                  name: {{.Release.Name}}-cfg
+                  key: redis_password
+            - name: DB_HOST
+              valueFrom:
+                configMapKeyRef:
+                  name: {{.Release.Name}}-cfg
+                  key: db_host
+            - name: DB_PASSWORD
+              valueFrom:
+                configMapKeyRef:
+                  name: {{.Release.Name}}-cfg
+                  key: db_password
+            - name: DB_USER
+              valueFrom:
+                configMapKeyRef:
+                  name: {{.Release.Name}}-cfg
+                  key: db_user
+            - name: DB_NAME
+              valueFrom:
+                configMapKeyRef:
+                  name: {{.Release.Name}}-cfg
+                  key: db_name
+            - name: DB_PORT
+              valueFrom:
+                configMapKeyRef:
+                  name: {{.Release.Name}}-cfg
+                  key: db_port
+            - name: SECRET_KEY
+              valueFrom:
+                configMapKeyRef:
+                  name: {{.Release.Name}}-cfg
+                  key: secret_key
+            - name: BOOTSTRAP_TOKEN
+              valueFrom:
+                configMapKeyRef:
+                  name: {{.Release.Name}}-cfg
+                  key: bootstrap_token
+          resources:
+            {{- toYaml .Values.resources | nindent 12 }}
+      volumes:
+      - name: static
+        nfs:
+          path: {{ .Values.nfs.static.path }}
+          server: {{ .Values.nfs.static.server }}
+      - name: media
+        nfs:
+          path: {{ .Values.nfs.media.path }}
+          server: {{ .Values.nfs.media.server }}
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}

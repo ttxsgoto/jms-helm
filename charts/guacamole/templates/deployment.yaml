@@ -1,0 +1,81 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "guacamole.fullname" . }}
+  labels:
+    {{- include "guacamole.labels" . | nindent 4 }}
+spec:
+{{- if not .Values.autoscaling.enabled }}
+  replicas: {{ .Values.replicaCount }}
+{{- end }}
+  selector:
+    matchLabels:
+      {{- include "guacamole.selectorLabels" . | nindent 6 }}
+  strategy:
+    rollingUpdate:    # 滚动更新
+      maxSurge: {{ .Values.rollingUpdate.maxSurge }}  # 指定可以超过期望的pod数量的最大百分比，也可以是个数
+      maxUnavailable: {{ .Values.rollingUpdate.maxUnavailable }}    # 指定升级过程中不可用Pod的最大数量
+    type: {{ .Values.rollingUpdate.type }}
+  template:
+    metadata:
+    {{- with .Values.podAnnotations }}
+      annotations:
+        {{- toYaml . | nindent 8 }}
+    {{- end }}
+      labels:
+        {{- include "guacamole.selectorLabels" . | nindent 8 }}
+    spec:
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      securityContext:
+        {{- toYaml .Values.podSecurityContext | nindent 8 }}
+      containers:
+        - name: {{ .Chart.Name }}
+          securityContext:
+            {{- toYaml .Values.securityContext | nindent 12 }}
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          ports:
+            - name: guacamole
+              containerPort: 8080
+              protocol: TCP
+          volumeMounts:
+            - name: guacamole
+              mountPath: /config/guacamole/keys
+          env:
+            - name: JUMPSERVER_SERVER
+              value: http://{{ .Release.Name }}-core:8080
+            - name: JUMPSERVER_KEY_DIR
+              value: /config/guacamole/keys
+            - name: GUACAMOLE_HOME
+              value: /config/guacamole
+            - name: GUACAMOLE_LOG_LEVEL
+              value: ERROR
+            - name: JUMPSERVER_ENABLE_DRIVE
+              value: "true"
+            - name: BOOTSTRAP_TOKEN
+              valueFrom:
+                configMapKeyRef:
+                  name: {{.Release.Name}}-cfg
+                  key: bootstrap_token
+          resources:
+            {{- toYaml .Values.resources | nindent 12 }}
+      volumes:
+        - name: guacamole
+          nfs:
+            path: {{ .Values.nfs.path }}
+            server: {{ .Values.nfs.server }}
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}

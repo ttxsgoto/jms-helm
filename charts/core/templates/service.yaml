@@ -1,0 +1,21 @@
+apiVersion: v1
+kind: Service
+metadata:
+#  name: {{ include "core.fullname" . }}
+  name: core
+  labels:
+    {{- include "core.labels" . | nindent 4 }}
+spec:
+  type: {{ .Values.service.core.type }}
+  ports:
+    - port: {{ .Values.service.core.port }}
+      targetPort: core
+      protocol: TCP
+      name: core
+    - port: {{ .Values.service.core8070.port }}
+      targetPort: core8070
+      protocol: TCP
+      name: core8070
+  selector:
+    {{- include "core.selectorLabels" . | nindent 4 }}
+  sessionAffinity: ClientIP

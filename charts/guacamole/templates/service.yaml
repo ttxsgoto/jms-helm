@@ -1,0 +1,17 @@
+apiVersion: v1
+kind: Service
+metadata:
+#  name: {{ include "guacamole.fullname" . }}
+  name: guacamole
+  labels:
+    {{- include "guacamole.labels" . | nindent 4 }}
+spec:
+  type: {{ .Values.service.type }}
+  ports:
+    - port: {{ .Values.service.port }}
+      targetPort: guacamole
+      protocol: TCP
+      name: guacamole
+  selector:
+    {{- include "guacamole.selectorLabels" . | nindent 4 }}
+  sessionAffinity: ClientIP

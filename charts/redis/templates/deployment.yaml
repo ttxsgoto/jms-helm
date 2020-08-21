@@ -1,0 +1,81 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "redis.fullname" . }}
+  labels:
+    {{- include "redis.labels" . | nindent 4 }}
+spec:
+{{- if not .Values.autoscaling.enabled }}
+  replicas: {{ .Values.replicaCount }}
+{{- end }}
+  selector:
+    matchLabels:
+      {{- include "redis.selectorLabels" . | nindent 6 }}
+  strategy:
+    rollingUpdate:    # 滚动更新
+      maxSurge: {{ .Values.rollingUpdate.maxSurge }}  # 指定可以超过期望的pod数量的最大百分比，也可以是个数
+      maxUnavailable: {{ .Values.rollingUpdate.maxUnavailable }}    # 指定升级过程中不可用Pod的最大数量
+    type: {{ .Values.rollingUpdate.type }}
+  template:
+    metadata:
+    {{- with .Values.podAnnotations }}
+      annotations:
+        {{- toYaml . | nindent 8 }}
+    {{- end }}
+      labels:
+        {{- include "redis.selectorLabels" . | nindent 8 }}
+    spec:
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      securityContext:
+        {{- toYaml .Values.podSecurityContext | nindent 8 }}
+      containers:
+        - name: {{ .Chart.Name }}
+          securityContext:
+            {{- toYaml .Values.securityContext | nindent 12 }}
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          ports:
+            - name: redis
+              containerPort: 6379
+              protocol: TCP
+          volumeMounts:
+            - name: redis
+              mountPath: /var/lib/redis
+          env:
+            - name: REDIS_PORT
+              valueFrom:
+                configMapKeyRef:
+                  name: {{.Release.Name}}-cfg
+                  key: redis_port
+            - name: REDIS_HOST
+              valueFrom:
+                configMapKeyRef:
+                  name: {{.Release.Name}}-cfg
+                  key: redis_host
+            - name: REDIS_PASSWORD
+              valueFrom:
+                configMapKeyRef:
+                  name: {{.Release.Name}}-cfg
+                  key: redis_password
+          resources:
+            {{- toYaml .Values.resources | nindent 12 }}
+      volumes:
+        - name: redis
+          nfs:
+            path: {{ .Values.nfs.path }}
+            server: {{ .Values.nfs.server }}
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}

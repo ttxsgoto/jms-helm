@@ -1,0 +1,131 @@
+# Default values for jms-helm.
+# This is a YAML-formatted file.
+# Declare variables to be passed into your templates.
+global: # 全局变量
+  bootstrap_token: "7Q11Vz6R2J6BLAdO"
+  secret_key: "B3f2w8P2PfxIAS7s4URrD9YmSbtqX4vXdPUL217kL9XPUOWrmy"
+
+db:
+  db_port: "3306"
+  db_name: "jumpserver"
+  db_user: "jumpserver"
+  db_password: "nu4x599Wq7u0Bn8EABh3J91G"
+  db_host: "mysql"
+
+rs:
+  redis_host: "redis"
+  redis_port: "6379"
+  redis_password: "8URXPL2x3HZMi7xoGTdk3Upj"
+
+core:
+  replicaCount: 1
+  image:
+    repository: "wojiushixiaobai/jms_core"
+    pullPolicy: IfNotPresent
+    tag: "1.5.6"
+  rollingUpdate:
+    maxSurge: 25%
+    maxUnavailable: 25%
+    type: RollingUpdate
+  service:
+    core:
+      type: ClusterIP
+      port: 8080
+    core8070:
+      type: ClusterIP
+      port: 8070
+  nfs:
+    static:
+      server: 192.168.238.100
+      path: /data/core/static
+    media:
+      server: 192.168.238.100
+      path: /data/core/media
+
+mysql:
+  replicaCount: 1
+  image:
+    repository: "wojiushixiaobai/jms_mysql"
+    pullPolicy: IfNotPresent
+    tag: "1.5.6"
+  service:
+    type: ClusterIP
+    port: 3306
+  persistence:
+    nfs: true
+    nfsserver: 192.168.238.100
+    nfspath: /data/mysql
+#  nfs:
+#    server: 192.168.238.100
+#    path: /data/mysql
+
+redis:
+  replicaCount: 1
+  image:
+    repository: "wojiushixiaobai/jms_redis"
+    pullPolicy: IfNotPresent
+    tag: "1.5.6"
+  service:
+    type: ClusterIP
+    port: 6379
+  nfs:
+    server: 192.168.238.100
+    path: /data/redis
+
+guacamole:
+  replicaCount: 1
+  image:
+    repository: "wojiushixiaobai/jms_guacamole"
+    pullPolicy: IfNotPresent
+    tag: "1.5.6"
+  service:
+    type: ClusterIP
+    port: 8080
+  nfs:
+    server: 192.168.238.100
+    path: /data/guacamole
+
+koko:
+  replicaCount: 1
+  image:
+    repository: "wojiushixiaobai/jms_koko"
+    pullPolicy: IfNotPresent
+    tag: "1.5.6"
+  rollingUpdate:
+    maxSurge: 25%
+    maxUnavailable: 25%
+    type: RollingUpdate
+  service:
+    type: NodePort
+    koko:
+      type: ClusterIP
+      port: 2222
+      nodePort: 32222
+    koko5000:
+      type: ClusterIP
+      port: 5000
+  nfs:
+    server: 192.168.238.100
+    path: /data/koko
+
+nginx:
+  replicaCount: 1
+  image:
+    repository: "wojiushixiaobai/jms_nginx"
+    pullPolicy: IfNotPresent
+    tag: "1.5.6"
+  rollingUpdate:
+    maxSurge: 25%
+    maxUnavailable: 25%
+    type: RollingUpdate
+  service:
+    type: NodePort
+    port: 80
+    nodeport: 30080
+  nfs:
+    static:
+      server: 192.168.238.100
+      path: /data/core/static
+    media:
+      server: 192.168.238.100
+      path: /data/core/media

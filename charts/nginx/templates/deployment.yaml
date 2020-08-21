@@ -1,0 +1,71 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "nginx.fullname" . }}
+  labels:
+    {{- include "nginx.labels" . | nindent 4 }}
+spec:
+{{- if not .Values.autoscaling.enabled }}
+  replicas: {{ .Values.replicaCount }}
+{{- end }}
+  selector:
+    matchLabels:
+      {{- include "nginx.selectorLabels" . | nindent 6 }}
+  strategy:
+    rollingUpdate:    # 滚动更新
+      maxSurge: {{ .Values.rollingUpdate.maxSurge }}  # 指定可以超过期望的pod数量的最大百分比，也可以是个数
+      maxUnavailable: {{ .Values.rollingUpdate.maxUnavailable }}    # 指定升级过程中不可用Pod的最大数量
+    type: {{ .Values.rollingUpdate.type }}
+  template:
+    metadata:
+    {{- with .Values.podAnnotations }}
+      annotations:
+        {{- toYaml . | nindent 8 }}
+    {{- end }}
+      labels:
+        {{- include "nginx.selectorLabels" . | nindent 8 }}
+    spec:
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      securityContext:
+        {{- toYaml .Values.podSecurityContext | nindent 8 }}
+      containers:
+        - name: {{ .Chart.Name }}
+          securityContext:
+            {{- toYaml .Values.securityContext | nindent 12 }}
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          ports:
+            - name: nginx
+              containerPort: 80
+              protocol: TCP
+          volumeMounts:
+            - name: static
+              mountPath: /opt/jumpserver/data/static
+            - name: media
+              mountPath: /opt/jumpserver/data/media
+          resources:
+            {{- toYaml .Values.resources | nindent 12 }}
+      volumes:
+      - name: static
+        nfs:
+          path: {{ .Values.nfs.static.path }}
+          server: {{ .Values.nfs.static.server }}
+      - name: media
+        nfs:
+          path: {{ .Values.nfs.media.path }}
+          server: {{ .Values.nfs.media.server }}
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}

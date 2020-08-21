@@ -1,0 +1,29 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  #  name: jms-cfg
+  name: {{.Release.Name}}-cfg
+  {{- template "jms.labels" .}}
+data:
+  #  db_port: "3306"
+  db_port: {{.Values.db.db_port | default 3306 | quote}}
+#  db_name: "jumpserver"
+#  db_user: "jumpserver"
+#  db_password: "nu4x599Wq7u0Bn8EABh3J91G"
+  {{- with .Values.db }}
+  db_name: {{ .db_name | quote}}
+  db_user: {{ .db_user | quote}}
+  db_password: {{ .db_password | quote}}
+  {{- end }}
+  db_host: "mysql"
+  {{- if eq .Values.db.db_port "3306" }}
+  db_type: "mysql"
+  {{- end }}
+  {{- with .Values.rs }}
+  redis_host: {{ .redis_host | default "redis" | quote }}
+  redis_port: {{ .redis_port | default "6379" | quote }}
+  redis_password: {{ .redis_port | default "8URXPL2x3HZMi7xoGTdk3Upj" | quote }}
+  {{- end }}
+  secret_key: {{ .Values.global.secret_key | default "B3f2w8P2PfxIAS7s4URrD9YmSbtqX4vXdPUL217kL9XPUOWrmy"| quote }}
+  bootstrap_token: {{ .Values.global.bootstrap_token | default "7Q11Vz6R2J6BLAdO" | quote }}
+{{ include "jms.app" . | indent 2 }}  # include 比 template 会更好，可以更好地为 YAML 处理输出格式
